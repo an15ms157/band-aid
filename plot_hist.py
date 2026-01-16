@@ -181,39 +181,70 @@ def plot_th1_overlay(bin_edges, counts_list, labels, title: str, output: str):
 
 def plot_th2_grid(th2_data, labels, title: str, output: str):
     n = len(th2_data)
-    rows, cols = 3, 2
-    fig, axes = plt.subplots(rows, cols, figsize=(4 * cols, 3.5 * rows), squeeze=False)
-    for idx, (ax, data, label) in enumerate(zip(axes.flat, th2_data, labels)):
-        if idx >= n:
-            break
-        counts, xedges, yedges = data
-        # Convert to numpy arrays if needed
+    if n == 0:
+        print(f"No data to plot for {title}")
+        return
+    
+    # Landscape mode with GridSpec: 50% left (1 plot), 50% right (max 4 plots)
+    fig = plt.figure(figsize=(16, 8))
+    gs = fig.add_gridspec(2, 4, hspace=0.3, wspace=0.3)
+    
+    # Large plot on left (spans full height)
+    ax_large = fig.add_subplot(gs[:, 0:2])
+    
+    # Small plots on right (up to 4)
+    ax_small = []
+    ax_small.append(fig.add_subplot(gs[0, 2]))
+    ax_small.append(fig.add_subplot(gs[0, 3]))
+    ax_small.append(fig.add_subplot(gs[1, 2]))
+    ax_small.append(fig.add_subplot(gs[1, 3]))
+    
+    # Plot largest (first) on left
+    if n > 0:
+        counts, xedges, yedges = th2_data[0]
         xedges = np.asarray(xedges)
         yedges = np.asarray(yedges)
-        # Create scatter plot from 2D histogram
         x_bin_centers = 0.5 * (xedges[:-1] + xedges[1:])
         y_bin_centers = 0.5 * (yedges[:-1] + yedges[1:])
         X, Y = np.meshgrid(x_bin_centers, y_bin_centers)
-        # Flatten arrays for scatter plot
         x_flat = X.flatten()
         y_flat = Y.flatten()
         counts_flat = counts.T.flatten()
-        # Scatter plot with counts as color and size
-        scatter = ax.scatter(x_flat, y_flat, c=counts_flat, s=np.sqrt(counts_flat) * 5, 
-                            cmap="viridis", alpha=0.6, edgecolors="none")
+        scatter = ax_large.scatter(x_flat, y_flat, c=counts_flat, s=np.sqrt(counts_flat) * 5, 
+                                   cmap="viridis", alpha=0.6, edgecolors="none")
         n_entries = int(np.sum(counts))
-        ax.set_title(f"{label}\n(N={n_entries})")
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        plt.colorbar(scatter, ax=ax, label="Counts")
-    # remove unused axes
-    for ax in axes.flat[n:]:
-        ax.axis("off")
-    fig.suptitle(title)
-    fig.tight_layout(rect=(0, 0, 0.9, 0.95))
+        ax_large.set_title(f"{labels[0]}\n(N={n_entries})", fontsize=12, fontweight="bold")
+        ax_large.set_xlabel("x")
+        ax_large.set_ylabel("y")
+        plt.colorbar(scatter, ax=ax_large, label="Counts")
+    
+    # Plot remaining (up to 4) on right
+    for idx, ax_small_plot in enumerate(ax_small):
+        data_idx = idx + 1
+        if data_idx < n:
+            counts, xedges, yedges = th2_data[data_idx]
+            xedges = np.asarray(xedges)
+            yedges = np.asarray(yedges)
+            x_bin_centers = 0.5 * (xedges[:-1] + xedges[1:])
+            y_bin_centers = 0.5 * (yedges[:-1] + yedges[1:])
+            X, Y = np.meshgrid(x_bin_centers, y_bin_centers)
+            x_flat = X.flatten()
+            y_flat = Y.flatten()
+            counts_flat = counts.T.flatten()
+            scatter = ax_small_plot.scatter(x_flat, y_flat, c=counts_flat, s=np.sqrt(counts_flat) * 3, 
+                                           cmap="viridis", alpha=0.6, edgecolors="none")
+            n_entries = int(np.sum(counts))
+            ax_small_plot.set_title(f"{labels[data_idx]}\n(N={n_entries})", fontsize=10)
+            ax_small_plot.set_xlabel("x", fontsize=9)
+            ax_small_plot.set_ylabel("y", fontsize=9)
+            plt.colorbar(scatter, ax=ax_small_plot, label="Counts")
+        else:
+            ax_small_plot.axis("off")
+    
+    fig.suptitle(title, fontsize=14, fontweight="bold")
     output_path = Path(output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(output_path, dpi=150)
+    fig.savefig(output_path, dpi=150, bbox_inches="tight")
     print(f"Saved {output_path}")
 
 def main():

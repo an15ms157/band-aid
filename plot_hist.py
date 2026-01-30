@@ -54,7 +54,7 @@ import numpy as np
 import uproot
 
 # Pattern: parent test directory containing subfolders
-loc = "/home/abhishek/PhD/Work/work_A/photons/ML_analysis/training_output/XGB_on_Grid/models/MB_bkg/V4_16Jan2026/test"
+loc = "/home/abhishek/PhD/Work/work_A/photons/ML_analysis/training_output/XGB_on_Grid/models/MB_bkg/V5_29Jan2026/test"
 
 
 def _get_name(obj) -> str:
@@ -112,24 +112,38 @@ def find_by_name(obj, target: str) -> Optional[Tuple[Tuple[str, ...], object]]:
 
 def load_th1(file_paths: Sequence[str], name: str):
     """Load TH1-like objects by name from each file, ensuring binning consistency."""
+    if len(file_paths) < 5:
+        print(f"  ⚠ Warning: Only {len(file_paths)} file(s) found (expected up to 5)")
+    
     edges = None
     counts_list = []
     labels = []
     for path in file_paths:
-        with uproot.open(path) as f:
-            root_obj = f[f.keys()[0]]  # GammaConvV1_xxxx
-            found = find_by_name(root_obj, name)
-            if not found:
-                raise KeyError(f"Histogram '{name}' not found in {path}")
-            _, h = found
-            counts, bin_edges = h.to_numpy(flow=False)
-            if edges is None:
-                edges = bin_edges
-            else:
-                if len(edges) != len(bin_edges) or (edges != bin_edges).any():
-                    raise ValueError(f"Bin edges differ in {path}; cannot overlay")
-            counts_list.append(counts)
-            labels.append(Path(path).name)  # Use ROOT filename
+        try:
+            with uproot.open(path) as f:
+                if not f.keys():
+                    print(f"  ⚠ Skipping {Path(path).name}: ROOT file is empty")
+                    continue
+                root_obj = f[f.keys()[0]]  # GammaConvV1_xxxx
+                found = find_by_name(root_obj, name)
+                if not found:
+                    print(f"  ⚠ Skipping {Path(path).name}: Histogram '{name}' not found")
+                    continue
+                _, h = found
+                counts, bin_edges = h.to_numpy(flow=False)
+                if edges is None:
+                    edges = bin_edges
+                else:
+                    if len(edges) != len(bin_edges) or (edges != bin_edges).any():
+                        raise ValueError(f"Bin edges differ in {path}; cannot overlay")
+                counts_list.append(counts)
+                labels.append(Path(path).name)  # Use ROOT filename
+        except Exception as e:
+            print(f"  ⚠ Skipping {Path(path).name}: {e}")
+            continue
+    
+    if not counts_list:
+        raise ValueError(f"No valid histograms found for '{name}' in any file")
     return edges, counts_list, labels
 
 
@@ -138,25 +152,36 @@ def load_th2(file_paths: Sequence[str], name: str):
     out = []
     labels = []
     for path in file_paths:
-        with uproot.open(path) as f:
-            root_obj = f[f.keys()[0]]
-            found = find_by_name(root_obj, name)
-            if not found:
-                raise KeyError(f"Histogram '{name}' not found in {path}")
-            _, h = found
-            result = h.to_numpy(flow=False, dd=True)
-            if len(result) == 2:
-                counts, edges_tuple = result
-                # edges_tuple is (x_edges, y_edges)
-                if isinstance(edges_tuple[0], (list, tuple, np.ndarray)):
-                    xedges, yedges = edges_tuple[0], edges_tuple[1]
+        try:
+            with uproot.open(path) as f:
+                if not f.keys():
+                    print(f"  ⚠ Skipping {Path(path).name}: ROOT file is empty")
+                    continue
+                root_obj = f[f.keys()[0]]
+                found = find_by_name(root_obj, name)
+                if not found:
+                    print(f"  ⚠ Skipping {Path(path).name}: Histogram '{name}' not found")
+                    continue
+                _, h = found
+                result = h.to_numpy(flow=False, dd=True)
+                if len(result) == 2:
+                    counts, edges_tuple = result
+                    # edges_tuple is (x_edges, y_edges)
+                    if isinstance(edges_tuple[0], (list, tuple, np.ndarray)):
+                        xedges, yedges = edges_tuple[0], edges_tuple[1]
+                    else:
+                        # Fallback: if edges is 1D, use it for both
+                        xedges, yedges = edges_tuple, edges_tuple
                 else:
-                    # Fallback: if edges is 1D, use it for both
-                    xedges, yedges = edges_tuple, edges_tuple
-            else:
-                counts, xedges, yedges = result
-            out.append((counts, xedges, yedges))
-            labels.append(Path(path).name)  # Use ROOT filename
+                    counts, xedges, yedges = result
+                out.append((counts, xedges, yedges))
+                labels.append(Path(path).name)  # Use ROOT filename
+        except Exception as e:
+            print(f"  ⚠ Skipping {Path(path).name}: {e}")
+            continue
+    
+    if not out:
+        raise ValueError(f"No valid histograms found for '{name}' in any file")
     return out, labels
 
 
@@ -184,6 +209,10 @@ def plot_th2_grid(th2_data, labels, title: str, output: str):
     if n == 0:
         print(f"No data to plot for {title}")
         return
+    
+    # Warn if fewer than 5 files
+    if n < 5:
+        print(f"  ⚠ Warning: Only {n} file(s) found (expected up to 5)")
     
     # Landscape mode with GridSpec: 50% left (1 plot), 50% right (max 4 plots)
     fig = plt.figure(figsize=(16, 8))

@@ -1,0 +1,105 @@
+{
+  "_schema": {
+    "version": "1.1",
+    "source": "AliConversionPhotonCuts.cxx",
+    "cut_string": "0d200009ab770c00amd0404000",
+    "value_types": {
+      "null": "no cut applied",
+      "{min, max}": "simple threshold, always applied  →  min <= x <= max",
+      "{min/max, condition}": "threshold applied ONLY when condition window is met; rows outside window pass automatically",
+      "{conditional_cuts: [...] }": "multiple independent conditional cuts on the same feature",
+      "{2D_ellipse}": "coupled 2D cut: (f1/a1)^2 + (f2/a2)^2 < 1, both features enter jointly",
+      "{2D_exp_boundary}": "coupled 2D cut: |feature1| < C * exp(slope * feature2)"
+    }
+  },
+
+  "0-10pct": {
+    "_meta": {
+      "centrality": "0-10%",
+      "cut_string": "0d200009ab770c00amd0404000",
+      "event_cut": "10130053",
+      "track_cut": "0152101500000000"
+    },
+
+    "Alpha": null,
+
+    "Qt_Alpha_2D": {
+      "type": "2D_ellipse",
+      "condition": "(Alpha / 0.95)^2 + (Qt / qt_max_pt)^2 < 1",
+      "qt_max_pt": "min(0.11 * Photon_Pt, 0.040)",
+      "params": {
+        "alpha_semiaxis": 0.95,
+        "qt_slope_GeVc": 0.11,
+        "qt_cap_GeVc": 0.040,
+        "pt_saturation_GeVc": 0.3636
+      },
+      "note": "SetQtMaxCut(10): fDo2DQt=TRUE, fDoQtGammaSelection=2, fQtPtMax=0.11, fQtMax=0.040, fMaxPhotonAsymmetry=0.95. Qt semi-axis is pT-dependent: grows linearly as 0.11*pT until pT=0.364 GeV/c then caps at 0.040."
+    },
+
+    "PsiPair_Chi2_2D": {
+      "type": "2D_exp_boundary",
+      "condition": "|PsiPair| < 0.15 * exp(-0.15 * Chi2PerNDF)",
+      "params": {
+        "psi_amplitude": 0.15,
+        "chi2_exp_slope": -0.15,
+        "chi2_hard_max": 30.0
+      },
+      "note": "SetPsiPairCut(13)+SetChi2GammaCut(22): fDo2DPsiPairChi2=2, fPsiPairCut=0.15, fChi2CutConversionExpFunc=-0.15, fChi2CutConversion=30. The allowed |PsiPair| shrinks exponentially with chi2. Chi2 < 30 is also enforced as a hard 1D pre-cut."
+    },
+
+    "Eta": { "min": -0.8, "max": 0.8 },
+    "Phi": null,
+    "ConvR": { "min": 5.0, "max": 180.0 },
+    "CosThetaPA": { "min": 0.85 },
+    "PhotonQuality": null,
+    "DCAr": null,
+    "DCAz": null,
+
+    "RejectToCloseV0s": {
+      "enabled": true,
+      "delta_R_cm": 6.0,
+      "open_angle_rad": 0.02,
+      "note": "SetToCloseV0sCut(4): fDoToCloseV0sCut=TRUE, fDoDoubleCountingCut=TRUE, fDeltaR=6.0, fOpenAngle=0.02."
+    },
+
+    "MinNegClusterTPCToFindable": { "min": 0.6 },
+    "MinPosClusterTPCToFindable": { "min": 0.6 },
+
+    "ENeg_ITS_dEdX": null,
+    "ENeg_TPC_dEdX": { "min": -3.0, "max": 3.0 },
+    "ENeg_TOF": {
+      "min": -4.0,
+      "max": 4.0,
+      "condition": { "feature": "ENeg_Pt", "min": 0.4, "max": 2.5 }
+    },
+    "piMinus_ITS": null,
+    "piMinus_TPC": {
+      "conditional_cuts": [
+        { "min": 3.0, "condition": { "feature": "ENeg_Pt", "min": 0.4, "max": 8.0 } },
+        { "min": 2.0, "condition": { "feature": "ENeg_Pt", "min": 8.0 } }
+      ]
+    },
+    "piMinus_TOF": null,
+    "ENeg_Pt": { "min": 0.05 },
+    "ENeg_Eta": { "min": -0.8, "max": 0.8 },
+
+    "EPos_ITS_dEdX": null,
+    "EPos_TPC_dEdX": { "min": -3.0, "max": 3.0 },
+    "EPos_TOF": {
+      "min": -4.0,
+      "max": 4.0,
+      "condition": { "feature": "EPos_Pt", "min": 0.4, "max": 2.5 }
+    },
+    "piPlus_ITS": null,
+    "piPlus_TPC": {
+      "conditional_cuts": [
+        { "min": 3.0, "condition": { "feature": "EPos_Pt", "min": 0.4, "max": 8.0 } },
+        { "min": 2.0, "condition": { "feature": "EPos_Pt", "min": 8.0 } }
+      ]
+    },
+    "piPlus_TOF": null,
+    "EPos_Pt": { "min": 0.05 },
+    "EPos_Eta": { "min": -0.8, "max": 0.8 },
+    "EPos_Asymmetry": null
+  }
+}
